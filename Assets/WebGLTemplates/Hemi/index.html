@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #120806; overflow: hidden; }
+      #unity-canvas {
+        position: absolute; inset: 0; margin: auto; outline: none;
+        width: min(100vw, calc(100vh * 16 / 9)); height: min(100vh, calc(100vw * 9 / 16));
+        background: {{{ BACKGROUND_COLOR }}};
+      }
+      #loading {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        color: #ffd36e; font: 18px monospace; pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="loading">Loading Dig Up... <span id="loading-pct">0%</span></div>
+    <script src="TemplateData/hemi.js"></script>
+    <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      createUnityInstance(canvas, {
+        arguments: [],
+        dataUrl: "Build/{{{ DATA_FILENAME }}}",
+        frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+        workerUrl: "Build/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+        codeUrl: "Build/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+      }, function (progress) {
+        document.getElementById("loading-pct").textContent = Math.round(progress * 100) + "%";
+      }).then(function (unityInstance) {
+        window.unityInstance = unityInstance; // hemi.js sends results back through this
+        document.getElementById("loading").remove();
+        canvas.focus();
+      }).catch(function (message) {
+        alert(message);
+      });
+    </script>
+  </body>
+</html>

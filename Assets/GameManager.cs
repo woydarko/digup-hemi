@@ -44,6 +44,13 @@ public class GameManager : MonoBehaviour
         {
             winPanel.SetActive(true);
         }
+
+        // Tawarkan simpan run ke Hemi (di atas WinPanel)
+        if (HemiBridge.Instance != null && GameData.Instance != null)
+        {
+            HemiBridge.Instance.QueueRun(GameData.Instance.currentScore, true);
+            HemiBridge.Instance.ShowSubmitPanel();
+        }
     }
 
     // Dipanggil oleh tombol Retry

@@ -208,6 +208,8 @@ public void PlayAttackSFX()
         
         if (GameData.Instance != null)
         {
+            // Run diantrikan; panel simpan ke Hemi muncul di Main Menu
+            if (HemiBridge.Instance != null) HemiBridge.Instance.QueueRun(GameData.Instance.currentScore, false);
             GameData.Instance.ResetRun();
         }
         

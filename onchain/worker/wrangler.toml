@@ -1,0 +1,15 @@
+name = "digup-hemi"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Unity WebGL build output (File > Build Settings > Build, folder Build/WebGL at the Unity project root)
+[assets]
+directory = "../../Build/WebGL"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[vars]
+NETWORK = "testnet" # "testnet" | "mainnet"
+CONTRACT = "0x0000000000000000000000000000000000000000"
+
+# Secret (never commit): npx wrangler secret put RELAYER_KEY
