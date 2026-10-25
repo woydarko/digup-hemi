@@ -1,83 +1,59 @@
 using UnityEngine;
 
+// Kamera mengikuti Player secara vertikal dengan smoothing; X tetap (level vertikal)
 public class VerticalCameraFollow : MonoBehaviour
 {
-    [Header("Floor Setup")]
-    // Seret objek penanda lantai (Floor Markers) ke sini, dari bawah ke atas.
-    public Transform[] floorMarkers;
-    public float yThreshold = 1f;       // Jarak aman Player dari target sebelum memicu naik.
+    [Header("Follow")]
+    [Tooltip("Geser target kamera ke atas dari Player, supaya area di atas lebih kelihatan")]
+    public float yOffset = 1.5f;
+    [Range(0.05f, 1f)]
+    [Tooltip("Makin besar makin halus (tapi makin telat)")]
+    public float smoothTime = 0.25f;
+    [Tooltip("Kamera tidak turun di bawah posisi awalnya")]
+    public bool clampToStartY = true;
 
-    [Header("Movement")]
-    [Range(0.1f, 2f)] // Memudahkan penyesuaian di Inspector
-    public float cameraSmoothTime = 0.5f; // <--- UBAH NILAI INI
-    // Nilai 0.5f adalah default, coba naikkan ke 1.0f atau 1.5f untuk lebih halus
+    private Transform player;
+    private PlayerHealth playerHealth;
+    private float minY;
+    private float velocityY;
 
-    private int currentFloorIndex = 0;
-    private Vector3 velocity = Vector3.zero; // Digunakan untuk Vector3.SmoothDamp
+    void Start()
+    {
+        minY = transform.position.y;
 
-    private Transform player; // Cache, supaya tidak FindWithTag tiap frame
+        // Snap langsung ke Player saat scene mulai/respawn, tanpa animasi dari bawah
+        if (FindPlayer())
+        {
+            Vector3 p = transform.position;
+            p.y = TargetY();
+            transform.position = p;
+        }
+    }
 
     void LateUpdate()
     {
-        if (floorMarkers == null || floorMarkers.Length == 0) return;
-        if (player == null)
-        {
-            GameObject playerObject = GameObject.FindWithTag("Player");
-            if (playerObject == null) return;
-            player = playerObject.transform;
-        }
+        if (player == null && !FindPlayer()) return;
 
+        // Saat mati, Player jatuh tanpa collider; kamera diam supaya tidak ikut turun
+        if (playerHealth != null && playerHealth.IsDead) return;
 
-        // 1. Cek apakah Player sudah melewati batas lantai saat ini
-        CheckForNewFloor(player.position.y);
-
-        // 2. Tentukan posisi target kamera saat ini
-        float targetY = floorMarkers[currentFloorIndex].position.y;
-
-        // 3. Terapkan posisi baru secara mulus
-        Vector3 currentPosition = transform.position;
-        Vector3 targetPosition = new Vector3(currentPosition.x, targetY, currentPosition.z);
-
-        // Gunakan SmoothDamp untuk gerakan yang halus
-        transform.position = Vector3.SmoothDamp(
-            currentPosition,
-            targetPosition,
-            ref velocity,
-            cameraSmoothTime // <--- Menggunakan variabel smoothing
-        );
+        Vector3 pos = transform.position;
+        pos.y = Mathf.SmoothDamp(pos.y, TargetY(), ref velocityY, smoothTime);
+        transform.position = pos;
     }
 
-    void CheckForNewFloor(float playerY)
+    float TargetY()
     {
-        if (floorMarkers.Length == 0) return;
+        float y = player.position.y + yOffset;
+        return clampToStartY ? Mathf.Max(y, minY) : y;
+    }
 
-        // --- CHECK UPWARD (NAIK) ---
-        // Cek apakah Player sudah berada di atas batas lantai berikutnya.
-        if (currentFloorIndex < floorMarkers.Length - 1)
-        {
-            float nextFloorY = floorMarkers[currentFloorIndex + 1].position.y;
-
-            // Pindah ke lantai atas jika Player melewati batas lantai berikutnya minus threshold
-            if (playerY > nextFloorY - yThreshold)
-            {
-                currentFloorIndex++;
-                Debug.Log("Kamera naik ke Lantai: " + currentFloorIndex);
-                return;
-            }
-        }
-
-        // --- CHECK DOWNWARD (TURUN) ---
-        // Cek apakah Player sudah jatuh di bawah batas lantai saat ini.
-        if (currentFloorIndex > 0)
-        {
-            float currentFloorY = floorMarkers[currentFloorIndex].position.y;
-
-            // Pindah ke lantai bawah jika Player jatuh di bawah batas lantai saat ini minus threshold
-            if (playerY < currentFloorY - yThreshold)
-            {
-                currentFloorIndex--;
-                Debug.Log("Kamera turun ke Lantai: " + currentFloorIndex);
-            }
-        }
+    bool FindPlayer()
+    {
+        GameObject go = GameObject.FindWithTag("Player");
+        if (go == null) return false;
+        player = go.transform;
+        playerHealth = go.GetComponent<PlayerHealth>();
+        return true;
     }
 }

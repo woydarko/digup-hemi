@@ -43,6 +43,7 @@ public class PlayerHealth : MonoBehaviour
     private bool isInvincible = false;
     private SpriteRenderer sr; 
     private bool isDead = false; // Flag untuk mencegah double death
+    public bool IsDead => isDead;
 
     void Awake()
     {
