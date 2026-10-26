@@ -3,7 +3,6 @@ import {
   createWalletClient,
   http,
   defineChain,
-  verifyTypedData,
   isAddress,
   isHex,
   parseAbi,
@@ -18,6 +17,7 @@ export interface Env {
   NETWORK: string;
   CONTRACT: string;
   RELAYER_KEY: string;
+  MAX_PLAUSIBLE_SCORE?: string;
 }
 
 const NETWORKS = {
@@ -51,13 +51,17 @@ const RUN_TYPES = {
   ],
 } as const;
 
-const MAX_SCORE = 1_000_000;
+// The game runs in the browser, so the relayer is the only gate on a score: anything above this is
+// rejected before it costs gas. Override with the MAX_PLAUSIBLE_SCORE var after measuring real runs.
+const DEFAULT_MAX_PLAUSIBLE_SCORE = 50_000;
 const DEADLINE_SECONDS = 15 * 60;
 const RELAY_COOLDOWN_MS = 15_000;
 
+// Separate limits per IP and per wallet, so fresh wallets from one IP do not get fresh quota.
 // shortcut: per-isolate memory, so limits reset when Cloudflare spins a new isolate; upgrade to a
 // Durable Object or the Rate Limiting binding if the relayer gets abused.
-const lastRelay = new Map<string, number>();
+const lastRelayByIp = new Map<string, number>();
+const lastRelayByPlayer = new Map<string, number>();
 
 function setup(env: Env) {
   const net = NETWORKS[env.NETWORK as keyof typeof NETWORKS] ?? NETWORKS.testnet;
@@ -81,13 +85,16 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
-function parseScore(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 0 && n <= MAX_SCORE ? n : null;
+// A plausible run: whole number within the cap, and a finished (escaped) run always has some score
+function parseRun(scoreValue: unknown, escaped: boolean, maxScore: number): number | null {
+  const n = Number(scoreValue);
+  if (!Number.isInteger(n) || n < 0 || n > maxScore) return null;
+  return escaped && n === 0 ? null : n;
 }
 
 async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
   const { net, chain, contract, domain, publicClient } = setup(env);
+  const maxScore = Number(env.MAX_PLAUSIBLE_SCORE) || DEFAULT_MAX_PLAUSIBLE_SCORE;
   const read = <T>(functionName: "getTop" | "nonces" | "totalRuns" | "totalEscapes", args: unknown[] = []) =>
     publicClient.readContract({ address: contract, abi: ABI, functionName, args } as never) as Promise<T>;
 
@@ -117,7 +124,8 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   // Ready-to-sign EIP-712 payload, so the browser only needs window.ethereum (no web3 library)
   if (url.pathname === "/api/typed-data") {
     const player = url.searchParams.get("player") ?? "";
-    const score = parseScore(url.searchParams.get("score"));
+    const escaped = url.searchParams.get("escaped") === "true";
+    const score = parseRun(url.searchParams.get("score"), escaped, maxScore);
     if (!isAddress(player) || score === null) return json({ error: "bad player or score" }, 400);
     const nonce = await read<bigint>("nonces", [player]);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + DEADLINE_SECONDS);
@@ -133,15 +141,15 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
         ...RUN_TYPES,
       },
       primaryType: "Run",
-      message: { player, score, escaped: url.searchParams.get("escaped") === "true", nonce, deadline },
+      message: { player, score, escaped, nonce, deadline },
     });
   }
 
   if (url.pathname === "/api/relay" && request.method === "POST") {
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
     const player = String(body?.player ?? "");
-    const score = parseScore(body?.score);
     const escaped = body?.escaped === true;
+    const score = parseRun(body?.score, escaped, maxScore);
     const signature = String(body?.signature ?? "");
     const deadline = BigInt(Number(body?.deadline ?? 0));
     const now = BigInt(Math.floor(Date.now() / 1000));
@@ -150,12 +158,15 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     }
 
     const ip = request.headers.get("cf-connecting-ip") ?? "local";
-    const key = `${ip}|${player.toLowerCase()}`;
-    const last = lastRelay.get(key) ?? 0;
-    if (Date.now() - last < RELAY_COOLDOWN_MS) return json({ ok: false, error: "slow down, try again in a few seconds" }, 429);
+    const playerKey = player.toLowerCase();
+    const now_ms = Date.now();
+    if (now_ms - (lastRelayByIp.get(ip) ?? 0) < RELAY_COOLDOWN_MS || now_ms - (lastRelayByPlayer.get(playerKey) ?? 0) < RELAY_COOLDOWN_MS) {
+      return json({ ok: false, error: "slow down, try again in a few seconds" }, 429);
+    }
 
     const nonce = await read<bigint>("nonces", [player]);
-    const valid = await verifyTypedData({
+    // publicClient.verifyTypedData also accepts ERC-1271 smart-contract wallets, matching the contract
+    const valid = await publicClient.verifyTypedData({
       address: player,
       domain,
       types: RUN_TYPES,
@@ -164,7 +175,8 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
       signature: signature as Hex,
     });
     if (!valid) return json({ ok: false, error: "signature does not match" }, 400);
-    lastRelay.set(key, Date.now());
+    lastRelayByIp.set(ip, now_ms);
+    lastRelayByPlayer.set(playerKey, now_ms);
 
     const account = privateKeyToAccount(env.RELAYER_KEY as Hex);
     const wallet = createWalletClient({ account, chain, transport: http() });

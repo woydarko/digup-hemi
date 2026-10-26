@@ -16,10 +16,12 @@ Built with Unity 6 (C#), playable in the browser. Runs are saved onchain on **He
 ## Hemi integration
 
 - **Free to play, gasless saves.** When a run ends, the player signs an EIP-712 `Run` message in their wallet
-  (no gas, no fee). A Cloudflare Worker relays it to the `DigUp` contract and pays the gas.
+  (no gas, no fee). A Cloudflare Worker checks the run and relays it to the `DigUp` contract, paying the gas.
+  Only that relayer can submit runs; EOA and ERC-1271 smart-contract wallets can both sign.
 - **Onchain leaderboard.** The contract keeps the top 10 best scores (one per wallet), shown on the main menu.
-- **Soulbound "Escaped" badge.** Reaching the finish flag mints a non-transferable ERC-721 badge (once per wallet),
-  with fully onchain SVG metadata.
+  The owner can `ban` a cheating wallet, which removes it from the board and blocks its later runs.
+- **Soulbound "Escaped" badge.** Reaching the finish flag mints a non-transferable ERC-721 badge (once per wallet,
+  ERC-5192 locked), with fully onchain SVG metadata.
 - A wallet is only needed to save a run; the game itself is playable without one.
 
 ```
@@ -39,7 +41,8 @@ Unity WebGL ──jslib──▶ hemi.js (window.ethereum: sign) ──▶ Worke
 1. **Contract**
    ```bash
    cd onchain/contracts && npm install && forge test
-   forge script script/Deploy.s.sol --rpc-url hemi --account <keystore> --broadcast   # or hemi_testnet
+   # RELAYER = address of the Worker's relayer wallet; the deployer becomes the owner
+   RELAYER=0x... forge script script/Deploy.s.sol --rpc-url hemi --account <keystore> --broadcast   # or hemi_testnet
    ```
 2. **Unity**: open the project in Unity 6, *File → Build Profiles → Web*, template **Hemi**, build to `Build/WebGL`.
 3. **Worker**: set `NETWORK` and `CONTRACT` in `onchain/worker/wrangler.toml`, then
@@ -56,8 +59,9 @@ Unity WebGL ──jslib──▶ hemi.js (window.ethereum: sign) ──▶ Worke
 
 ## Known limits
 
-- Scores are computed client-side, so a determined player can submit a fake score. The contract caps scores and
-  requires a valid wallet signature; the relayer rate-limits per IP and wallet.
+- Scores are computed client-side, so the game cannot prove a run onchain. The relayer is the trust point: it
+  rejects scores above `MAX_PLAUSIBLE_SCORE`, rate-limits per IP and per wallet, and the owner can `ban` any
+  wallet that still gets a fake score through.
 - Relayer rate limiting is in-memory per Worker isolate.
 
 ## License
