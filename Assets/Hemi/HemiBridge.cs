@@ -46,6 +46,8 @@ public class HemiBridge : MonoBehaviour
     private TextMeshProUGUI leaderboardText;
     private TextMeshProUGUI skipLabel;
     private Button submitButton;
+    private Button closeButton;
+    private GameObject previousSelection; // menu button to reselect after closing the leaderboard
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Create()
@@ -70,14 +72,29 @@ public class HemiBridge : MonoBehaviour
     {
         EnsureEventSystem();
         if (!fontApplied) ApplySceneFont();
-        bool menu = scene.name.Contains("MainMenu");
-        leaderboardPanel.SetActive(menu);
+        leaderboardPanel.SetActive(false);
         submitPanel.SetActive(false);
-        if (menu)
-        {
-            RefreshLeaderboard();
-            if (hasPending) ShowSubmitPanel();
-        }
+        if (hasPending && scene.name.Contains("MainMenu")) ShowSubmitPanel();
+    }
+
+    void Update()
+    {
+        if (leaderboardPanel.activeSelf && Input.GetKeyDown(KeyCode.Escape)) CloseLeaderboard();
+    }
+
+    // Opened from the main menu "LEADERBOARD" button
+    public void ShowLeaderboard()
+    {
+        previousSelection = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+        leaderboardPanel.SetActive(true);
+        closeButton.Select();
+        RefreshLeaderboard();
+    }
+
+    private void CloseLeaderboard()
+    {
+        leaderboardPanel.SetActive(false);
+        if (previousSelection != null && EventSystem.current != null) EventSystem.current.SetSelectedGameObject(previousSelection);
     }
 
     // --- Game API ---
@@ -226,9 +243,10 @@ public class HemiBridge : MonoBehaviour
         MakeButton(submitPanel.transform, "Skip", new Vector2(190, -150), new Color(0.3f, 0.3f, 0.3f), OnSkipClicked, out skipLabel);
         submitPanel.SetActive(false);
 
-        leaderboardPanel = Panel(canvasGo.transform, "LeaderboardPanel", new Vector2(1f, 0.5f), new Vector2(520, 640), new Vector2(-40, 0));
-        Label(leaderboardPanel.transform, "HEMI LEADERBOARD", 38, new Vector2(0, 270), new Vector2(480, 60), Gold);
-        leaderboardText = Label(leaderboardPanel.transform, "", 24, new Vector2(0, -40), new Vector2(480, 500), Color.white);
+        leaderboardPanel = Panel(canvasGo.transform, "LeaderboardPanel", new Vector2(0.5f, 0.5f), new Vector2(620, 680), Vector2.zero);
+        Label(leaderboardPanel.transform, "HEMI LEADERBOARD", 40, new Vector2(0, 290), new Vector2(560, 60), Gold);
+        leaderboardText = Label(leaderboardPanel.transform, "", 24, new Vector2(0, -10), new Vector2(560, 480), Color.white);
+        closeButton = MakeButton(leaderboardPanel.transform, "Close", new Vector2(0, -290), new Color(0.3f, 0.3f, 0.3f), CloseLeaderboard, out _);
         leaderboardText.alignment = TextAlignmentOptions.Top;
         leaderboardText.textWrappingMode = TextWrappingModes.NoWrap;
         leaderboardPanel.SetActive(false);

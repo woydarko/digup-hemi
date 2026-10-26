@@ -17,7 +17,7 @@ public class MainMenuManager : MonoBehaviour
     private Coroutine currentFlickerCoroutine; // Untuk menghentikan kedipan sebelumnya
     [Header("UI Elements")]
     public Button startButton;
-    public Button optionsButton; // Atau Continue Button
+    public Button leaderboardButton;
     public Button exitButton;
     
 
@@ -63,6 +63,7 @@ public class MainMenuManager : MonoBehaviour
         if (startButton != null)
         {
             startButton.Select(); // Fokuskan tombol Start Game
+            lastSelected = startButton.gameObject;
         }
 
         // Tambahkan Listener untuk setiap tombol agar kursor bergerak saat dipilih
@@ -88,6 +89,19 @@ public class MainMenuManager : MonoBehaviour
         }
     }
 
+    private GameObject lastSelected;
+
+    // Kursor ikut pindah saat pilihan menu berubah (panah keyboard atau klik)
+    void Update()
+    {
+        if (UnityEngine.EventSystems.EventSystem.current == null) return;
+        GameObject current = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject;
+        if (current == null || current == lastSelected) return;
+        lastSelected = current;
+        Button button = current.GetComponent<Button>();
+        if (button == startButton || button == leaderboardButton || button == exitButton) OnButtonSelected(button);
+    }
+
     // Fungsi untuk memindahkan kursor ke posisi tombol yang dipilih
     void MoveCursorToButton(Button targetButton)
     {
@@ -97,12 +111,14 @@ public class MainMenuManager : MonoBehaviour
         // Karena teks button biasanya yang menjadi referensi visual
         TextMeshProUGUI targetText = targetButton.GetComponentInChildren<TextMeshProUGUI>();
         if (targetText == null) return;
-        RectTransform targetTextRect = targetText.rectTransform;
-
-        // Hitung posisi baru kursor relatif terhadap teks tombol
-        Vector3 newCursorPosition = targetTextRect.position;
-        newCursorPosition.x += cursorOffsetX; // Sesuaikan offset X
-        newCursorPosition.y += cursorOffsetY; // Sesuaikan offset Y
+        // Taruh kursor di kiri tepi teks yang dirender (bukan tengah rect), supaya tidak menimpa teks di resolusi apa pun
+        Canvas.ForceUpdateCanvases();
+        targetText.ForceMeshUpdate();
+        Bounds bounds = targetText.textBounds;
+        Vector3 newCursorPosition = targetText.transform.TransformPoint(new Vector3(bounds.min.x, bounds.center.y, 0f));
+        float scale = cursorArrow.lossyScale.x; // offset dalam unit canvas
+        newCursorPosition.x += (cursorOffsetX - cursorArrow.rect.width * cursorArrow.pivot.x) * scale;
+        newCursorPosition.y += cursorOffsetY * scale;
 
         // Mulai Coroutine untuk animasi pergerakan kursor
         if (gameObject.activeInHierarchy) // Pastikan GameObject aktif sebelum Coroutine
@@ -169,11 +185,10 @@ public class MainMenuManager : MonoBehaviour
         SceneManager.LoadScene(sceneName);
     }
 
-    public void Options()
+    public void OpenLeaderboard()
     {
-        Debug.Log("Opening Options...");
         PlayClickSound();
-        // Implementasi untuk menu Opsi
+        if (HemiBridge.Instance != null) HemiBridge.Instance.ShowLeaderboard();
     }
 
 
