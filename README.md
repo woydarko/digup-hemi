@@ -10,6 +10,16 @@ Built with Unity 6 (C#), playable in the browser. Runs are saved onchain on **He
 **Contract (Hemi mainnet):** [`0x4999e6986165A727a358453797E824beec597575`](https://explorer.hemi.xyz/address/0x4999e6986165A727a358453797E824beec597575)
 (the same address was used on Hemi testnet during development)
 
+## Screenshots
+
+| Main menu | Gameplay |
+|---|---|
+| ![Main menu](docs/screenshots/menu.png) | ![Gameplay](docs/screenshots/gameplay.png) |
+| **Final score: save it on Hemi or skip** | **Onchain leaderboard** |
+| ![Save your run on Hemi](docs/screenshots/final-score.png) | ![Hemi leaderboard](docs/screenshots/leaderboard.png) |
+
+The leaderboard screenshot shows real runs from the Hemi testnet deployment.
+
 ## Controls
 
 | Action | Key |
