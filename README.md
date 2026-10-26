@@ -5,6 +5,11 @@ enemies, grab coins, and escape before the lava catches you.
 
 Built with Unity 6 (C#), playable in the browser. Runs are saved onchain on **Hemi**.
 
+**Play:** https://digup-hemi.digup-worker.workers.dev
+
+**Contract (Hemi mainnet):** [`0x4999e6986165A727a358453797E824beec597575`](https://explorer.hemi.xyz/address/0x4999e6986165A727a358453797E824beec597575)
+(the same address was used on Hemi testnet during development)
+
 ## Controls
 
 | Action | Key |
