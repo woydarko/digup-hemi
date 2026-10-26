@@ -10,7 +10,7 @@ run_worker_first = ["/api/*"]
 
 [vars]
 NETWORK = "testnet" # "testnet" | "mainnet"
-CONTRACT = "0x0000000000000000000000000000000000000000"
+CONTRACT = "0x4999e6986165A727a358453797E824beec597575" # DigUp on Hemi testnet
 MAX_PLAUSIBLE_SCORE = "50000" # relayer rejects runs above this; tune after measuring real runs
 
 # Secret (never commit): npx wrangler secret put RELAYER_KEY

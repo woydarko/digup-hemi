@@ -5,3 +5,4 @@ contracts/broadcast/*/31337/
 worker/.wrangler/
 worker/.dev.vars
 .env
+contracts/broadcast/*/*/dry-run/
