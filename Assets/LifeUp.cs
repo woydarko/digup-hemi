@@ -16,6 +16,8 @@ public class LifeUp : MonoBehaviour
     {
         // Simpan posisi awal item saat game dimulai
         startPosition = transform.position;
+        // Cherry yang sudah diambil di run ini tidak muncul lagi setelah respawn (cegah farming nyawa)
+        if (GameData.Instance != null && GameData.Instance.collectedPickups.Contains(startPosition)) Destroy(gameObject);
     }
     void Update()
     {
@@ -41,7 +43,8 @@ public class LifeUp : MonoBehaviour
             playerHealth.AddLife(lifeAmount); 
             
             // 2. [FIX] Putar Suara Koin (Menggunakan Handler yang sudah ada)
-            playerHealth.PlayCoinCollectSFX(); 
+            playerHealth.PlayCoinCollectSFX();
+            if (GameData.Instance != null) GameData.Instance.collectedPickups.Add(startPosition);
 
             // 3. Hancurkan item
             Destroy(gameObject); 

@@ -7,7 +7,16 @@ public class Coin : MonoBehaviour
     public string playerTag = "Player"; 
     // [BARU] Hubungkan Prefab Floating Text di Inspector
     [Header("Visual Feedback")]
-    public GameObject floatingTextPrefab; 
+    public GameObject floatingTextPrefab;
+
+    private Vector3 spawnPosition;
+
+    void Awake()
+    {
+        spawnPosition = transform.position;
+        // Koin yang sudah diambil di run ini tidak muncul lagi setelah respawn
+        if (GameData.Instance != null && GameData.Instance.collectedPickups.Contains(spawnPosition)) Destroy(gameObject);
+    }
 
     void OnTriggerEnter2D(Collider2D other)
     {
@@ -23,6 +32,7 @@ public class Coin : MonoBehaviour
                 // 2. [BARU] Tampilkan Floating Score Text
                 SpawnFloatingText(); 
                 playerHealth.PlayCoinCollectSFX();
+                if (GameData.Instance != null) GameData.Instance.collectedPickups.Add(spawnPosition);
                 // 3. Hancurkan koin
                 Destroy(gameObject);
             }

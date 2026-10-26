@@ -14,7 +14,9 @@ public class GameData : MonoBehaviour
 public Vector3 lastCheckpointPosition; // [BARU] Posisi checkpoint terakhir yang tersimpan
     // Variable nyawa yang akan bertahan saat scene di-reload.
     public int currentLives = 3;
-    public int maxLives = 3; 
+    public int maxLives = 3;
+    // Posisi spawn koin/Cherry yang sudah diambil di run ini, supaya tidak muncul lagi setelah respawn
+    public readonly System.Collections.Generic.HashSet<Vector3> collectedPickups = new System.Collections.Generic.HashSet<Vector3>();
 
     void Awake()
     {
@@ -97,6 +99,7 @@ public Vector3 lastCheckpointPosition; // [BARU] Posisi checkpoint terakhir yang
         ResetScore();
         ResetLives();
         lastCheckpointPosition = Vector3.zero;
+        collectedPickups.Clear();
     }
     public void StopBGM()
 {
